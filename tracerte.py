@@ -33,3 +33,8 @@ if __name__ == "__main__":
         traceroute(target_ip)
     else:
         print('target network necessary')
+
+
+#Questions: What could happen to cause an inconsistency in the route you discover? How likely is that to happen while your program runs?
+####Network congestion, routing changes, or packet loss could cause inconsistencies in the route discovered. These events can happen frequently in dynamic networks, especially over longer periods or during peak usage times.
+####However, during a short run of the program, the likelihood of significant route changes is relatively low, but not impossible.

@@ -11,18 +11,22 @@ def print_user_pass():
     print(f'Username: {u}')
     print(f'Password: {p}')
 
-def print_pckt(pckt):
+def print_pckt(pckt): # used open-AI-mini for this function
     global username, password, return_cnt
     if pckt.haslayer(Raw):
         byte_data = pckt[Raw].load
         if byte_data == b'\r\x00':
             return_cnt += 1
         elif byte_data == b'\n':
-            return_cnt = 0
+            return_cnt +=1
         elif byte_data == b'\r\n':
-            return_cnt = 0
+            return_cnt +=1
         elif byte_data == b'\b':
-            pass
+            # Handle backspace by removing last character
+            if return_cnt == 0 and username:
+                username.pop()
+            elif return_cnt > 0 and password:
+                password.pop()
         elif byte_data == b'':
             pass
         elif not byte_data.startswith(b'\xff'):
@@ -36,7 +40,7 @@ def print_pckt(pckt):
                         password.append(text)
             except:
                 print(f'Data: {byte_data}')
-        if return_cnt == 2:
+        if return_cnt >= 2:
             print_user_pass()
         
 def is_raw_frame(pckt):

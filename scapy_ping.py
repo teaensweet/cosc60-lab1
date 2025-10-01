@@ -49,7 +49,7 @@ def scapy_ping(target_ip, count: int = 4, payload_size: int=32, timeout: float=2
 
     for i in range(1, count + 1):
         seq = i
-        ICMP_Header = ICMP(type=8, code=0, id=0x1234, seq=seq)
+        ICMP_Header = ICMP(type=8, code=0, id=0xBEEF, seq=seq)
         raw = Raw(load=payload)
         ip_pkt = IP(dst=target_ip)
 
@@ -109,13 +109,16 @@ if __name__ == "__main__":
 
 
 #Questions: How did you resolve the domain name? 
-####
+#### Resolved domain name by using socket.gethostbyname() function. Additionally, IP should handle both domain names and IP addresses.
 # What function did you call? 
-####
+#### socket.gethostbyname()
 # What does it do? 
-####
-# Compare your solution with the built-in Ping command available from the command line. 
-####
+#### It resolves a hostname to its corresponding IPv4 address.
+# Compare your solution with the built-in Ping command available from the command line.
+####The built-in ping command sends ICMP echo requests and waits for replies, measuring round-trip time and packet loss. My Scapy-based solution does the same but allows for more customization, such as payload size and timeout settings.
 # What differences do you notice? Why are they different? 
-####
+####The built in ping header uses a randomized ID, while my ping header used 0xBEEF, which is a custom magic word.
+####They are different because the Windows Kernel uses process-specific identifier (random on Windows).
+####Also, with the command line ping, Sequence numbers that increment per request.
 # How could you make your code run faster?
+###Code the ping in C/C++ rather than using Scapy
