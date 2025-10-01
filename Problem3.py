@@ -1,3 +1,5 @@
+# Problem3.py
+# Used LLM Based IDE
 from scapy.all import *
 from scapy.layers.inet import IP
 
@@ -11,7 +13,7 @@ def print_user_pass():
     print(f'Username: {u}')
     print(f'Password: {p}')
 
-def print_pckt(pckt): # used open-AI-mini for this function
+def print_pckt(pckt): # used open-AI-mini for help with this function
     global username, password, return_cnt
     if pckt.haslayer(Raw):
         byte_data = pckt[Raw].load
@@ -22,7 +24,6 @@ def print_pckt(pckt): # used open-AI-mini for this function
         elif byte_data == b'\r\n':
             return_cnt +=1
         elif byte_data == b'\b':
-            # Handle backspace by removing last character
             if return_cnt == 0 and username:
                 username.pop()
             elif return_cnt > 0 and password:

