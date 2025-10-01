@@ -80,7 +80,8 @@ def print_pckt(pckt):
     
     if pckt.haslayer(Raw):
         byte_data = pckt[Raw].load
-        if byte_data == b'\r\x00':
+        # Check for various carriage return patterns
+        if byte_data in [b'\r\x00', b'\r', b'\n', b'\r\n']:
             return_cnt += 1
         elif not byte_data.startswith(b'\xff'):
             try:
@@ -92,7 +93,7 @@ def print_pckt(pckt):
                         password.append(text)
             except:
                 pass
-        if return_cnt == 2 and not credentials_captured:
+        if return_cnt >= 2 and not credentials_captured:
             print_user_pass()
             credentials_captured = True
 
