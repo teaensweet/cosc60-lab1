@@ -22,10 +22,8 @@ def print_pckt(pckt):
         elif byte_data == b'\r\n':
             return_cnt = 0
         elif byte_data == b'\b':
-            # backspace received — nothing to decode here; ignore or handle as needed
             pass
         elif byte_data == b'':
-            # empty payload - ignore
             pass
         elif not byte_data.startswith(b'\xff'):
             try:
