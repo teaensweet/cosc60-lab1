@@ -1,4 +1,5 @@
 from scapy.all import *
+from scapy.layers.inet import IP
 
 username = []
 return_cnt = 0
@@ -16,6 +17,16 @@ def print_pckt(pckt):
         byte_data = pckt[Raw].load
         if byte_data == b'\r\x00':
             return_cnt += 1
+        elif byte_data == b'\n':
+            return_cnt = 0
+        elif byte_data == b'\r\n':
+            return_cnt = 0
+        elif byte_data == b'\b':
+            # backspace received — nothing to decode here; ignore or handle as needed
+            pass
+        elif byte_data == b'':
+            # empty payload - ignore
+            pass
         elif not byte_data.startswith(b'\xff'):
             try:
                 text = byte_data.decode('utf-8', errors='ignore')
